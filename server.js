@@ -26,11 +26,23 @@ const cleanData = (entry) => {
 };
 
 // Function to insert data from JSON file into MySQL table
+// Function to insert data from JSON file into MySQL table
 const insertDataFromJson = async () => {
     try {
         // Read and parse JSON file
         const data = await fs.readFile("./data.json", "utf-8");
         const jsonData = JSON.parse(data);
+
+        // Check if data already exists in the database by checking a specific condition (e.g., first date in the file)
+        const firstDate = jsonData[0].date; // Get the first date from the JSON
+        const [existingData] = await pool.query(
+            "SELECT COUNT(*) AS count FROM stocks WHERE date = ?", [firstDate]
+        );
+
+        if (existingData[0].count > 0) {
+            console.log("Data already exists in the database, skipping insertion.");
+            return; // Exit if data exists
+        }
 
         // Insert each entry into the table
         const insertQuery = `
@@ -55,6 +67,7 @@ const insertDataFromJson = async () => {
         console.error("Error inserting data into MySQL:", err);
     }
 };
+
 
 // Route for fetching paginated data
 app.get("/data", async (req, res) => {
