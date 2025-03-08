@@ -1,84 +1,83 @@
+const express = require("express");
+const cors = require("cors");
+const mysql = require("mysql2/promise");
+const fs = require("fs").promises;
 require('dotenv').config();
-const fs = require('fs');
-const express = require('express');
-const cors = require('cors');
-const mysql = require('mysql2');
-
 const app = express();
 app.use(cors());
 
-// MySQL connection setup
-const connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: process.env.MYSQL_PASSWORD,
-    database: 'stock_data'
+// Create MySQL connection pool
+const pool = mysql.createPool({
+    host: "localhost", // Change this to your DB host
+    user: "root", // Change this to your DB user
+    password: process.env.MYSQL_PASSWORD, // Change this to your DB password
+    database: "stock_data", // Change this to your DB name
 });
 
-// Check if the connection is established
-connection.connect((err) => {
-    if (err) {
-        console.error('Error connecting to MySQL:', err);
-    } else {
-        console.log('Connected to MySQL database');
-    }
-});
+// Function to clean up data (remove commas from numbers)
+const cleanData = (entry) => {
+    return {
+        ...entry,
+        high: entry.high.replace(',', ''),
+        low: entry.low.replace(',', ''),
+        open: entry.open.replace(',', ''),
+        close: entry.close.replace(',', ''),
+    };
+};
 
-// Function to fetch data from JSON and insert into database
-const insertData = async () => {
+// Function to insert data from JSON file into MySQL table
+const insertDataFromJson = async () => {
     try {
-        // Read data from JSON file
-        const data = await fs.promises.readFile('./data.json', 'utf-8');
+        // Read and parse JSON file
+        const data = await fs.readFile("./data.json", "utf-8");
         const jsonData = JSON.parse(data);
 
-        // Insert JSON data into MySQL
-        for (const entry of jsonData) {
-            await connection.execute(
-                'INSERT INTO stocks(date, trade_code, high, low, open, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [
-                    entry.date,
-                    entry.trade_code,
-                    parseFloat(entry.high.replace(/,/g, '')),
-                    parseFloat(entry.low.replace(/,/g, '')),
-                    parseFloat(entry.open.replace(/,/g, '')),
-                    parseFloat(entry.close.replace(/,/g, '')),
-                    parseInt(entry.volume.replace(/,/g, ''), 10)
-                ]
-            );
-        }
+        // Insert each entry into the table
+        const insertQuery = `
+            INSERT INTO stocks (date, trade_code, high, low, open, close, volume)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
 
-        console.log('Data inserted into stocks table.');
+        for (const entry of jsonData) {
+            const cleanedEntry = cleanData(entry); // Clean data before inserting
+            await pool.query(insertQuery, [
+                cleanedEntry.date,
+                cleanedEntry.trade_code,
+                cleanedEntry.high,
+                cleanedEntry.low,
+                cleanedEntry.open,
+                cleanedEntry.close,
+                cleanedEntry.volume
+            ]);
+        }
+        console.log("Data successfully inserted into MySQL table");
     } catch (err) {
-        console.error('Error inserting data:', err);
+        console.error("Error inserting data into MySQL:", err);
     }
 };
 
-// Fetch data and insert into the table when server starts
-insertData();
-
-// Route to fetch and paginate stock data
-app.get('/data', async (req, res) => {
+// Route for fetching paginated data
+app.get("/data", async (req, res) => {
     try {
-        let { page = 1, limit = 50 } = req.query;
-        page = parseInt(page, 10);
-        limit = parseInt(limit, 10);
-        const offset = (page - 1) * limit;
+        const { page = 1, limit = 50 } = req.query;
+        const offset = (page - 1) * Number(limit);
 
-        // Fetch paginated data
-        const [rows] = await connection.execute(
-            'SELECT * FROM stocks LIMIT ? OFFSET ?',
-            [limit, offset]
+        // Fetch data from the 'stocks' table
+        const [rows] = await pool.query(
+            "SELECT * FROM stocks ORDER BY date DESC LIMIT ? OFFSET ?", 
+            [Number(limit), offset]
         );
 
         res.json(rows);
     } catch (err) {
-        console.error('Error fetching data:', err);
-        res.status(500).json({ error: 'Failed to load data' });
+        console.error("Error:", err);
+        res.status(500).json({ error: "Failed to fetch data" });
     }
 });
 
-// Start the server
+// Start the server and insert data on startup
 const PORT = 5000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    await insertDataFromJson(); // Insert data from JSON on server startup
 });
