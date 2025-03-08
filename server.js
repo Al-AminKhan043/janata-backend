@@ -88,6 +88,31 @@ app.get("/data", async (req, res) => {
     }
 });
 
+//delete route for row deletion
+
+app.delete('/delete/:id', async (req,res)=>{
+    const {id}=req.params;
+    if(!id || isNaN(id)){
+        return res.status(500).json({error:'invalid id'})
+    }
+    try{
+     const [result]=await pool.query('DELETE FROM stocks WHERE id=?',[id]);
+     if(result.affectedRows>0){
+        res.status(200).json({
+            success: 'row deleted successfully!'
+        })
+        
+     }
+     else {
+        res.status(404).json({error:'row not found!'});
+    }
+    }
+    catch(error){
+        console.error('Error deleting data',error);
+        res.status(500).json({error: 'Internal server error!'});
+    }
+})
+
 // Start the server and insert data on startup
 const PORT = 5000;
 app.listen(PORT, async () => {
