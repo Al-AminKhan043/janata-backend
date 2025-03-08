@@ -5,7 +5,7 @@ const fs = require("fs").promises;
 require('dotenv').config();
 const app = express();
 app.use(cors());
-
+app.use(express.json());
 // Create MySQL connection pool
 const pool = mysql.createPool({
     host: "localhost", // Change this to your DB host
@@ -87,6 +87,48 @@ app.get("/data", async (req, res) => {
         res.status(500).json({ error: "Failed to fetch data" });
     }
 });
+
+
+// update route for row update
+
+app.put('/update/:id', async (req, res) => {
+    const { id } = req.params;
+    let { date, trade_code, high, low, open, close, volume } = req.body;
+  
+    // Validate required fields
+    if (!id || !date || !trade_code || !high || !low || !open || !close || !volume) {
+      return res.status(400).json({ error: 'Missing required fields!' });
+    }
+  
+    try {
+      // Convert date to MySQL format
+      const formattedDate = new Date(date).toISOString().slice(0, 19).replace("T", " ");
+  
+      // Ensure numeric values are properly formatted
+      high = parseFloat(high);
+      low = parseFloat(low);
+      open = parseFloat(open);
+      close = parseFloat(close);
+      volume = parseInt(volume.toString().replace(/,/g, ""), 10); // Remove commas & convert to number
+  
+      // Execute the update query
+      const [result] = await pool.query(
+        'UPDATE stocks SET date=?, trade_code=?, high=?, low=?, open=?, close=?, volume=? WHERE id=?',
+        [formattedDate, trade_code, high, low, open, close, volume, id]
+      );
+  
+      if (result.affectedRows > 0) {
+        res.status(200).json({ success: 'Successfully updated row!' });
+      } else {
+        res.status(404).json({ error: 'Row not found!' });
+      }
+    } catch (error) {
+      console.error('Database error:', error);
+      res.status(500).json({ error: 'Database error!' });
+    }
+  });
+  
+  
 
 //delete route for row deletion
 
