@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 // Create MySQL connection pool
 const pool = mysql.createPool({
-    host: process.env.DB_HOST,
+  host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
@@ -23,6 +23,7 @@ const cleanData = (entry) => {
         low: entry.low.replace(',', ''),
         open: entry.open.replace(',', ''),
         close: entry.close.replace(',', ''),
+        volume: parseInt(entry.volume.replace(',', ''), 10),
     };
 };
 
@@ -109,7 +110,7 @@ app.put('/update/:id', async (req, res) => {
       low = parseFloat(low);
       open = parseFloat(open);
       close = parseFloat(close);
-      volume = parseInt(volume.toString().replace(/,/g, ""), 10); 
+      volume = parseInt(volume.replace(',', ''), 10);
   
       // Execute the update query
       const [result] = await pool.query(
