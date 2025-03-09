@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-app.use(cors()); // Allow frontend to fetch data
+app.use(cors()); 
 
 // Route for getting paginated data
 app.get("/data", async (req, res) => {
@@ -13,7 +13,7 @@ app.get("/data", async (req, res) => {
         
         // Read and parse the JSON data
         const data = await fs.readFile("./data.json", "utf-8");
-        const jsonData = JSON.parse(data); // Your data is an array
+        const jsonData = JSON.parse(data); 
 
         // Calculate the range of data to send (pagination)
         const startIndex = (page - 1) * Number(limit);
