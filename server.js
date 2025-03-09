@@ -8,10 +8,10 @@ app.use(cors());
 app.use(express.json());
 // Create MySQL connection pool
 const pool = mysql.createPool({
-    host: "localhost", // Change this to your DB host
-    user: "root", // Change this to your DB user
-    password: process.env.MYSQL_PASSWORD, // Change this to your DB password
-    database: "stock_data", // Change this to your DB name
+    host: "localhost", 
+    user: "root", 
+    password: process.env.MYSQL_PASSWORD, 
+    database: "stock_data", 
 });
 
 // Function to clean up data (remove commas from numbers)
@@ -25,16 +25,15 @@ const cleanData = (entry) => {
     };
 };
 
-// Function to insert data from JSON file into MySQL table
-// Function to insert data from JSON file into MySQL table
+
 const insertDataFromJson = async () => {
     try {
         // Read and parse JSON file
         const data = await fs.readFile("./data.json", "utf-8");
         const jsonData = JSON.parse(data);
 
-        // Check if data already exists in the database by checking a specific condition (e.g., first date in the file)
-        const firstDate = jsonData[0].date; // Get the first date from the JSON
+        // Check if data already exists in the database by checking a specific condition 
+        const firstDate = jsonData[0].date; 
         const [existingData] = await pool.query(
             "SELECT COUNT(*) AS count FROM stocks WHERE date = ?", [firstDate]
         );
@@ -51,7 +50,7 @@ const insertDataFromJson = async () => {
         `;
 
         for (const entry of jsonData) {
-            const cleanedEntry = cleanData(entry); // Clean data before inserting
+            const cleanedEntry = cleanData(entry); 
             await pool.query(insertQuery, [
                 cleanedEntry.date,
                 cleanedEntry.trade_code,
@@ -109,7 +108,7 @@ app.put('/update/:id', async (req, res) => {
       low = parseFloat(low);
       open = parseFloat(open);
       close = parseFloat(close);
-      volume = parseInt(volume.toString().replace(/,/g, ""), 10); // Remove commas & convert to number
+      volume = parseInt(volume.toString().replace(/,/g, ""), 10); 
   
       // Execute the update query
       const [result] = await pool.query(
@@ -159,5 +158,5 @@ app.delete('/delete/:id', async (req,res)=>{
 const PORT = 5000;
 app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    await insertDataFromJson(); // Insert data from JSON on server startup
+    await insertDataFromJson(); 
 });
